@@ -3,12 +3,18 @@ import Layout from '../layouts/Layout.astro';
 import GameCard from '../components/GameCard.astro';
 import PageHero from '../components/PageHero.astro';
 import EmptyState from '../components/EmptyState.astro';
+import GameFilters from '../components/GameFilters.astro';
 import { getDatabase } from '../lib/db';
 import { getAllGames } from '../lib/games';
+import { getAllCategories } from '../lib/categories';
+import { getAllPublishers } from '../lib/publishers';
 
 export const prerender = true;
 
-const games = await getAllGames(getDatabase());
+const db = getDatabase();
+const games = await getAllGames(db);
+const categories = await getAllCategories(db);
+const publishers = await getAllPublishers(db);
 ---
 
 <Layout title="Tailspin Toys - Crowdfunding your new favorite game!">
@@ -24,10 +30,70 @@ const games = await getAllGames(getDatabase());
       {games.length === 0 ? (
         <EmptyState text="No games available at the moment." />
       ) : (
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="games-grid">
-          {games.map((game) => <GameCard game={game} />)}
-        </div>
+        <>
+          <GameFilters categories={categories} publishers={publishers} />
+
+          <div
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            data-testid="games-grid"
+          >
+            {games.map((game) => <GameCard game={game} />)}
+          </div>
+
+          <div hidden data-testid="no-filter-matches">
+            <EmptyState text="No games match the selected filters." />
+          </div>
+        </>
       )}
     </div>
   </div>
 </Layout>
+
+<script>
+  // Client-side filtering: the full game list is prerendered above, and this
+  // script toggles card visibility based on the checked category/publisher
+  // filters. A game matches when (no categories are checked, or its category
+  // is checked) AND (no publishers are checked, or its publisher is checked).
+  function getCheckedIds(filterType: 'category' | 'publisher'): string[] {
+    const checkboxes = document.querySelectorAll<HTMLInputElement>(
+      `input.filter-checkbox[data-filter-type="${filterType}"]:checked`,
+    );
+    return Array.from(checkboxes).map((checkbox) => checkbox.dataset.filterId ?? '');
+  }
+
+  function applyFilters(): void {
+    const checkedCategoryIds = getCheckedIds('category');
+    const checkedPublisherIds = getCheckedIds('publisher');
+    const cards = document.querySelectorAll<HTMLElement>('[data-testid="game-card"]');
+
+    let visibleCount = 0;
+    cards.forEach((card) => {
+      const categoryMatch =
+        checkedCategoryIds.length === 0 || checkedCategoryIds.includes(card.dataset.categoryId ?? '');
+      const publisherMatch =
+        checkedPublisherIds.length === 0 ||
+        checkedPublisherIds.includes(card.dataset.publisherId ?? '');
+      const isVisible = categoryMatch && publisherMatch;
+      card.hidden = !isVisible;
+      if (isVisible) visibleCount += 1;
+    });
+
+    const noMatches = document.querySelector<HTMLElement>('[data-testid="no-filter-matches"]');
+    if (noMatches) noMatches.hidden = visibleCount > 0;
+  }
+
+  function clearFilters(): void {
+    document
+      .querySelectorAll<HTMLInputElement>('input.filter-checkbox:checked')
+      .forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+    applyFilters();
+  }
+
+  document.querySelectorAll<HTMLInputElement>('input.filter-checkbox').forEach((checkbox) => {
+    checkbox.addEventListener('change', applyFilters);
+  });
+
+  document.getElementById('clear-filters-button')?.addEventListener('click', clearFilters);
+</script>
