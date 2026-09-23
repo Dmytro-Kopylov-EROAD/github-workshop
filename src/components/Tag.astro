@@ -14,6 +14,6 @@ const colors: Record<NonNullable<Props['color']>, string> = {
 };
 ---
 
-<span class:list={['text-xs font-medium px-2.5 py-0.5 rounded', colors[color], className]} {...rest}>
+<span class:list={['text-xs font-medium px-2.5 py-0.5 rounded high-contrast:bg-black high-contrast:text-white high-contrast:border high-contrast:border-white', colors[color], className]} {...rest}>
     <slot />
 </span>

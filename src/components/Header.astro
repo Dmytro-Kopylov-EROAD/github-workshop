@@ -1,28 +1,51 @@
 ---
+// Provides site navigation and the persistent high-contrast preference control.
 import Menu from '../assets/icons/menu.svg';
 ---
 
-<header class="bg-blue-500 dark:bg-blue-700 text-white p-4 shadow-md transition-colors duration-300">
+<header class="bg-blue-500 dark:bg-blue-700 text-white p-4 shadow-md transition-colors duration-300 motion-reduce:transition-none high-contrast:bg-black high-contrast:border-b-2 high-contrast:border-white">
   <div class="container mx-auto flex justify-between items-center pl-4 pr-4">
     <div class="flex items-center">
       <div class="relative group">
-        <button id="menu-toggle" class="focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-500 rounded mr-4" aria-label="Toggle menu" aria-expanded="false" aria-controls="menu">
+        <button
+          id="menu-toggle"
+          data-testid="menu-toggle"
+          class="inline-flex min-h-11 min-w-11 items-center justify-center rounded mr-2 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-500 high-contrast:focus:ring-4 high-contrast:focus:ring-yellow-300 high-contrast:focus:ring-offset-black"
+          aria-label="Toggle menu"
+          aria-expanded="false"
+          aria-controls="menu"
+        >
           <Menu class="h-6 w-6" aria-hidden="true" />
         </button>
-        <nav id="menu" aria-label="Main" class="hidden absolute left-0 mt-2 w-48 bg-white dark:bg-slate-800 text-slate-800 dark:text-white rounded shadow-lg z-10 transition-colors duration-300">
+        <nav id="menu" aria-label="Main" class="hidden absolute left-0 mt-2 w-48 bg-white dark:bg-slate-800 text-slate-800 dark:text-white rounded shadow-lg z-10 transition-colors duration-300 motion-reduce:transition-none high-contrast:bg-black high-contrast:text-white high-contrast:border-2 high-contrast:border-white">
           <ul class="py-1">
-            <li><a href="/" class="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700">Home</a></li>
-            <li><a href="/about" class="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700">About</a></li>
+            <li>
+              <a href="/" data-testid="nav-home" class="block px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 high-contrast:hover:bg-white high-contrast:hover:text-black high-contrast:focus:ring-4 high-contrast:focus:ring-yellow-300">Home</a>
+            </li>
+            <li>
+              <a href="/about" data-testid="nav-about" class="block px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 high-contrast:hover:bg-white high-contrast:hover:text-black high-contrast:focus:ring-4 high-contrast:focus:ring-yellow-300">About</a>
+            </li>
           </ul>
         </nav>
       </div>
-      <div class="text-xl font-bold"><a href="/" class="hover:underline">Tailspin Toys</a></div>
+      <div class="text-xl font-bold">
+        <a href="/" data-testid="site-title-link" class="rounded hover:underline focus:outline-none focus:ring-2 focus:ring-white high-contrast:focus:ring-4 high-contrast:focus:ring-yellow-300">Tailspin Toys</a>
+      </div>
     </div>
+    <button
+      id="contrast-toggle"
+      type="button"
+      data-testid="contrast-toggle"
+      class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/70 bg-blue-900 px-3 py-2 text-sm font-semibold hover:bg-blue-950 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-500 high-contrast:bg-white high-contrast:text-black high-contrast:border-white high-contrast:hover:bg-yellow-300 high-contrast:focus:ring-4 high-contrast:focus:ring-yellow-300 high-contrast:focus:ring-offset-black"
+      aria-pressed="false"
+    >
+      <span>High contrast</span>
+      <span data-testid="contrast-status" aria-hidden="true" class="rounded bg-black/30 px-2 py-0.5 text-xs high-contrast:bg-black high-contrast:text-white">Off</span>
+    </button>
   </div>
 </header>
 
 <script>
-  // Toggle menu visibility when hamburger is clicked
   const menuToggle = document.getElementById('menu-toggle');
   const menu = document.getElementById('menu');
   
@@ -37,7 +60,6 @@ import Menu from '../assets/icons/menu.svg';
       }
     });
     
-    // Close menu when clicking outside
     document.addEventListener('click', (event) => {
       const target = event.target;
       const isClickInside = target instanceof Node && (menuToggle.contains(target) || menu.contains(target));
@@ -47,13 +69,37 @@ import Menu from '../assets/icons/menu.svg';
       }
     });
 
-    // Close menu with Escape key and return focus to toggle button
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !menu.classList.contains('hidden')) {
         menu.classList.add('hidden');
         menuToggle.setAttribute('aria-expanded', 'false');
         menuToggle.focus();
       }
+    });
+  }
+
+  const contrastToggle = document.getElementById('contrast-toggle');
+  const contrastStatus = contrastToggle?.querySelector<HTMLElement>('[data-testid="contrast-status"]');
+  const contrastStorageKey = 'tailspin-high-contrast';
+
+  function updateContrastPreference(enabled: boolean, persist: boolean): void {
+    document.documentElement.classList.toggle('high-contrast', enabled);
+    contrastToggle?.setAttribute('aria-pressed', String(enabled));
+    if (contrastStatus) contrastStatus.textContent = enabled ? 'On' : 'Off';
+
+    if (persist) {
+      try {
+        localStorage.setItem(contrastStorageKey, String(enabled));
+      } catch (error) {
+        console.error('Unable to save the contrast preference.', error);
+      }
+    }
+  }
+
+  if (contrastToggle) {
+    updateContrastPreference(document.documentElement.classList.contains('high-contrast'), false);
+    contrastToggle.addEventListener('click', () => {
+      updateContrastPreference(!document.documentElement.classList.contains('high-contrast'), true);
     });
   }
 </script>
